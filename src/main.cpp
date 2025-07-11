@@ -1,12 +1,19 @@
-#include "crow.h"
+#include <crow.h>
+#include "database/DatabaseManager.h"
 
 int main()
 {
-    crow::SimpleApp app;
+    std::string conn_string = "";
 
-    CROW_ROUTE(app, "/")([]() {
-        return "Hello world";
-        });
+    DatabaseManager dbManager(conn_string);
 
-    app.port(18080).run();
+    if (dbManager.connect()) {
+        std::cout << "Succesfully connected to the database";
+    }
+    else {
+        std::cerr << "Could not connect to the database. Exiting." << std::endl;
+        return 1; 
+    }
+
+    return 0;
 }
