@@ -17,7 +17,7 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 # --- Create Executable ---
-add_executable(server src/main.cpp "src/database/DatabaseManager.cpp" "src/database/DatabaseManager.h")
+add_executable(server src/main.cpp "src/database/DatabaseManager.cpp" "src/database/DatabaseManager.h" "src/core/Server.cpp" "src/core/Server.h")
 
 # --- Link Dependencies (Modern Method) ---
 # Link against the imported targets. This automatically handles
