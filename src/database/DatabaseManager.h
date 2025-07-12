@@ -6,6 +6,7 @@ class DatabaseManager {
 public:
 	DatabaseManager(std::string& connection_string);
 	bool connect();
+	pqxx::connection* getConnection();
 private:
 	std::string m_connection_string;
 	std::unique_ptr<pqxx::connection> m_connection;

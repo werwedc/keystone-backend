@@ -22,3 +22,8 @@ bool DatabaseManager::connect() {
 		return false;
 	}
 }
+
+pqxx::connection* DatabaseManager::getConnection() {
+	return m_connection.get();
+}
+	
