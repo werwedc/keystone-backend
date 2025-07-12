@@ -30,7 +30,7 @@ bool Server::setupDatabase() {
 void Server::setupAccountManager() {
     pqxx::connection* db_connection_ptr = m_dbManager->getConnection();
 
-    m_accountManager = std::make_unique<AccountManager>(db_connection_ptr);
+    m_accountManager = std::make_unique<AccountManager>(*db_connection_ptr);
 }
 
 void Server::initializeLibSodium() {
@@ -41,5 +41,5 @@ void Server::initializeLibSodium() {
 }
 
 void Server::runTests() {
-    m_accountManager->createAccount("john@gmail.com", "john123");
+    
 }

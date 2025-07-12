@@ -4,20 +4,15 @@
 
 class AccountManager {
 public:
-    AccountManager(pqxx::connection* db_connection);
-
+    AccountManager(pqxx::connection& db_connection);
+    
     bool createAccount(const std::string& email, const std::string& password);
-    bool deleteAccount(const std::string& email, const std::string& password);
+    bool deleteAccount(const std::string& email);
     bool doesAccountExist(const std::string& email);
-    bool isEmailValid(const std::string& email);
     bool isPasswordSecure(const std::string& password);
-    bool sendVerificationEmail(const std::string& emai);
-    bool sendPasswordResetEmail(const std::string& email, const std::string& password);
     bool changePass(const std::string& email, const std::string& new_password);
     std::string hash_password(const std::string& password);
-    bool verifyAccount(const std::string& email);
-    bool isVerified(const std::string& email);
-    bool tryLogin(const std::string& email, const std::string& password);
+    bool tryLogIn(const std::string& email, const std::string& password_attempt);
 private:
-    pqxx::connection* m_db_connection;
+    pqxx::connection& m_db_connection;
 };
