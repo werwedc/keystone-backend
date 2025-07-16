@@ -208,6 +208,29 @@ bool AccountManager::deleteRefreshTokenHash(int user_id)
 	}
 }
 
+std::string AccountManager::hash_token(const std::string& token)
+{
+	unsigned char hash[crypto_hash_sha256_BYTES];
+	crypto_hash_sha256(
+		hash,
+		reinterpret_cast<const unsigned char*>(token.c_str()),
+		token.length()
+	);
+	std::string hex_hash = bytes_to_hex(hash, sizeof(hash));
+	
+	return hex_hash;
+}
+
+std::string AccountManager::create_access_token(const AccountDetails& account_details, jwt::traits::kazuho_picojson& traits)
+{
+	return std::string();
+}
+
+std::string AccountManager::create_refresh_token(const AccountDetails& account_details, jwt::traits::kazuho_picojson& traits)
+{
+	return std::string();
+}
+
 
 std::string AccountManager::hash_password(const std::string& password)
 {
@@ -249,4 +272,14 @@ std::vector<std::string> AccountManager::parsePgTextArray(const std::string& pg_
 		}
 	}
 	return vec;
+}
+
+std::string AccountManager::bytes_to_hex(const unsigned char* bytes, size_t len)
+{
+	std::stringstream ss;
+	ss << std::hex << std::setfill('0');
+	for (size_t i = 0; i < len; ++i) {
+		ss << std::setw(2) << static_cast<unsigned int>(bytes[i]);
+	}
+	return ss.str();
 }

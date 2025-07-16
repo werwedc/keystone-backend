@@ -40,6 +40,11 @@ void Server::initializeLibSodium() {
     return;
 }
 
+void Server::initializeRoutes() {
+    m_crowApp = std::make_unique<CrowApp>(*m_accountManager);
+    m_crowApp->initializeRoutes();
+	m_crowApp->run(8080); // Example port, can be configured
+}
 void Server::runTests() {
     
 }

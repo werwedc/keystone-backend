@@ -27,10 +27,11 @@ public:
     bool storeRefreshTokenHash(int user_id, const std::string& refresh_token_hash);
     std::optional<std::string> getRefreshTokenHash(int user_id);
     bool deleteRefreshTokenHash(int user_id);
+    std::string hash_token(const std::string& token);
 private:
     pqxx::connection& m_db_connection;
     std::string hash_password(const std::string& password);
     std::vector<std::string> parsePgTextArray(const std::string& pg_array_string);
-
+    std::string bytes_to_hex(const unsigned char* bytes, size_t len);
 };
 

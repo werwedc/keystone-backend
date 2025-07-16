@@ -1,6 +1,11 @@
 #pragma once
 #include "crow.h"
+#include "jwt-cpp/traits/kazuho-picojson/traits.h"
+
+#include <chrono> 
+#include <jwt-cpp/jwt.h>
 #include "../core/client/AccountManager.h"
+
 
 class CrowApp {
 public:
