@@ -221,16 +221,6 @@ std::string AccountManager::hash_token(const std::string& token)
 	return hex_hash;
 }
 
-std::string AccountManager::create_access_token(const AccountDetails& account_details, jwt::traits::kazuho_picojson& traits)
-{
-	return std::string();
-}
-
-std::string AccountManager::create_refresh_token(const AccountDetails& account_details, jwt::traits::kazuho_picojson& traits)
-{
-	return std::string();
-}
-
 
 std::string AccountManager::hash_password(const std::string& password)
 {

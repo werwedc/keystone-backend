@@ -11,6 +11,7 @@ void Server::run() {
         return;
     }
     setupAccountManager();
+	initializeRoutes();
     runTests();
 }
 

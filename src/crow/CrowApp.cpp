@@ -1,12 +1,11 @@
 #include "CrowApp.h"
 
+using traits = jwt::traits::kazuho_picojson;
+
 CrowApp::CrowApp(AccountManager& accountManager) 
 	:m_accountManager(accountManager)
 {
-
 }
-
-using traits = jwt::traits::kazuho_picojson;
 
 void CrowApp::initializeRoutes()
 {
@@ -65,7 +64,7 @@ void CrowApp::initializeRoutes()
 					.set_payload_claim("email", picojson::value(account_details->email))
 					.set_payload_claim("roles", picojson::value(roles_array))
 					.set_issued_now()
-					.set_expires_in<traits>(std::chrono::minutes(15))
+					.set_expires_in(std::chrono::seconds{ 15 * 60 })
 					.sign(jwt::algorithm::hs256{ "secret" });
 
 				std::string refresh_token = jwt::create<traits>()
@@ -75,17 +74,17 @@ void CrowApp::initializeRoutes()
 					.set_payload_claim("email", picojson::value(account_details->email))
 					.set_payload_claim("roles", picojson::value(roles_array))
 					.set_issued_now()
-					.set_expires_in<traits>(std::chrono::hours(24 * 7))
+					.set_expires_in(std::chrono::seconds{ 24 * 60 * 60 * 7 })
 					.sign(jwt::algorithm::hs256{ "secret" });
 
 				std::string refresh_token_hash = m_accountManager.hash_token(refresh_token);
 				m_accountManager.storeRefreshTokenHash(account_details->id, refresh_token_hash);
 
-				// Success Response (200 OK): JSON "access_token" and "refresh_token"
 				return crow::response(200, crow::json::wvalue({
 					{"access_token", access_token},
 					{"refresh_token", refresh_token}
 				}));
+
 			} else {
 				return crow::response(401, "Invalid credentials");
 			}
@@ -121,7 +120,7 @@ void CrowApp::initializeRoutes()
 					.set_payload_claim("email", picojson::value(email))
 					.set_payload_claim("roles", picojson::value(roles_claim))
 					.set_issued_now()
-					.set_expires_in<traits>(std::chrono::minutes(15))
+					.set_expires_in(std::chrono::seconds{ 15 * 60 })
 					.sign(jwt::algorithm::hs256{ "secret" });
 				return crow::response(200, crow::json::wvalue({
 					{"access_token", new_access_token}
