@@ -1,6 +1,6 @@
 #pragma once
 #include "../database/DatabaseManager.h"
-#include "../client/AccountManager.h"
+#include "client/AccountManager.h"
 #include <iostream>
 
 class Server {

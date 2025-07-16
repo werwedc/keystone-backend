@@ -16,9 +16,10 @@ find_package(libpqxx CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(unofficial-sodium CONFIG REQUIRED)
+find_package(jwt-cpp CONFIG REQUIRED)
 
 # --- Create Executable ---
-add_executable(server src/main.cpp "src/database/DatabaseManager.cpp" "src/database/DatabaseManager.h" "src/core/Server.cpp" "src/core/Server.h"  "src/client/AccountManager.h" "src/client/AccountManager.cpp")
+add_executable(server src/main.cpp "src/database/DatabaseManager.cpp" "src/database/DatabaseManager.h" "src/core/Server.cpp" "src/core/Server.h"  "src/core/client/AccountManager.h" "src/core/client/AccountManager.cpp" "src/crow/CrowApp.cpp" "src/crow/CrowApp.h")
 
 # --- Link Dependencies (Modern Method) ---
 # Link against the imported targets. This automatically handles
@@ -32,6 +33,7 @@ target_link_libraries(server PRIVATE
     OpenSSL::Crypto
     ZLIB::ZLIB
     unofficial-sodium::sodium
+    jwt-cpp::jwt-cpp
 )
 
 # workaround to remove error: "C++ command-line error: invalid macro definition: _CROW_ICD-NOTFOUND"
