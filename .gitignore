@@ -6,3 +6,6 @@
 # Ignore user-specific files
 *.user
 *.suo
+
+# Ignore VS-specific CMake settings
+CMakeSettings.json
