@@ -11,8 +11,10 @@ void Server::run() {
         return;
     }
     setupAccountManager();
-	initializeRoutes();
+    setupApplicationsManager();
+    initializeLibSodium();
     runTests();
+	initializeRoutes();
 }
 
 bool Server::setupDatabase() {
@@ -29,9 +31,11 @@ bool Server::setupDatabase() {
 }
 
 void Server::setupAccountManager() {
-    pqxx::connection* db_connection_ptr = m_dbManager->getConnection();
+    m_accountManager = std::make_unique<AccountManager>(*m_dbManager);
+}
 
-    m_accountManager = std::make_unique<AccountManager>(*db_connection_ptr);
+void Server::setupApplicationsManager() {
+    m_applicationsManager = std::make_unique<ApplicationsManager>(*m_accountManager, *m_dbManager);
 }
 
 void Server::initializeLibSodium() {
@@ -42,10 +46,11 @@ void Server::initializeLibSodium() {
 }
 
 void Server::initializeRoutes() {
-    m_crowApp = std::make_unique<CrowApp>(*m_accountManager);
+    m_crowApp = std::make_unique<CrowApp>(*m_accountManager, *m_applicationsManager);
     m_crowApp->initializeRoutes();
 	m_crowApp->run(8080); // Example port, can be configured
 }
 void Server::runTests() {
-    
+    m_accountManager->createAccount("test", "test");
+    m_applicationsManager->createApplication(1, "Demo Application");
 }

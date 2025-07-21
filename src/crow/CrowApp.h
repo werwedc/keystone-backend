@@ -5,6 +5,7 @@
 #include <chrono> 
 #include <jwt-cpp/jwt.h>
 #include "../core/client/AccountManager.h"
+#include "../core/applications/ApplicationsManager.h"
 
 struct CorsMiddleware {
     struct context {};
@@ -29,10 +30,11 @@ struct CorsMiddleware {
 
 class CrowApp {
 public:
-	CrowApp(AccountManager& accountManager);
+	CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager);
 	void initializeRoutes();
 	void run(int port);
 private:
 	crow::App<CorsMiddleware> app;
 	AccountManager& m_accountManager;
+    ApplicationsManager& m_applicationsManager;
 };

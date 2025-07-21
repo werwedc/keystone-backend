@@ -2,8 +2,8 @@
 
 using traits = jwt::traits::kazuho_picojson;
 
-CrowApp::CrowApp(AccountManager& accountManager) 
-	:m_accountManager(accountManager)
+CrowApp::CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager)
+	:m_accountManager(accountManager), m_applicationsManager(applicationsManager)
 {
 }
 
@@ -153,6 +153,156 @@ void CrowApp::initializeRoutes()
 				}
 			} catch (const std::exception& e) {
 				return crow::response(401, "Invalid refresh token");
+			}
+			});
+	// Applications
+	CROW_ROUTE(app, "/api/applications/create")
+		.methods("POST"_method)
+			([this](const crow::request& req) {
+				auto json = crow::json::load(req.body);
+				if (!json) {
+					return crow::response(400, "Invalid JSON");
+				}
+				if (!json.has("name")) return crow::response(400, "Missing name");
+				if (!json.has("access_token")) return crow::response(400, "Missing access token");
+				std::string access_token = json["access_token"].s();
+				std::string name = json["name"].s();
+				try {
+					auto decoded_token = jwt::decode<traits>(access_token);
+					auto verifier = jwt::verify<traits>()
+						.with_issuer("keystone")
+						.allow_algorithm(jwt::algorithm::hs256{ "secret"});
+					verifier.verify(decoded_token);
+
+					int user_id = decoded_token.get_payload_claim("user_id").as_integer();
+
+					if (m_applicationsManager.createApplication(user_id, name)) {
+						return crow::response(200, "Application created successfully");
+					} else {
+						return crow::response(500, "Failed to create application");
+					}
+				} catch (const std::exception& e) {
+					return crow::response(401, "Invalid access token");
+				}
+			});
+	CROW_ROUTE(app, "api/application/delete")
+		.methods("POST"_method)
+		([this](const crow::request& req) {
+			auto json = crow::json::load(req.body);
+			if (!json) {
+				return crow::response(400, "Invalid JSON");
+			}
+			if (!json.has("application_id")) return crow::response(400, "Missing application_id");
+			if (!json.has("access_token")) return crow::response(400, "Missing access token");
+			std::string access_token = json["access_token"].s();
+			int application_id = json["application_id"].i();
+			try {
+				auto decoded_token = jwt::decode<traits>(access_token);
+				auto verifier = jwt::verify<traits>()
+					.with_issuer("keystone")
+					.allow_algorithm(jwt::algorithm::hs256{ "secret" });
+				verifier.verify(decoded_token);
+
+				if (m_applicationsManager.deleteApplication(application_id)) {
+					return crow::response(200, "Application deleted successfully");
+				} else {
+					return crow::response(500, "Failed to delete application");
+				}
+			} catch (const std::exception& e) {
+				return crow::response(401, "Invalid access token");
+			}
+			});
+	CROW_ROUTE(app, "api/application/set_active")
+		.methods("POST"_method)
+		([this](const crow::request& req) {
+			auto json = crow::json::load(req.body);
+			if (!json) {
+				return crow::response(400, "Invalid JSON");
+			}
+			if (!json.has("application_id")) return crow::response(400, "Missing application_id");
+			if (!json.has("active")) return crow::response(400, "Missing active status");
+			if (!json.has("access_token")) return crow::response(400, "Missing access token");
+			std::string access_token = json["access_token"].s();
+			int application_id = json["application_id"].i();
+			bool active = json["active"].b();
+			try {
+				auto decoded_token = jwt::decode<traits>(access_token);
+				auto verifier = jwt::verify<traits>()
+					.with_issuer("keystone")
+					.allow_algorithm(jwt::algorithm::hs256{ "secret" });
+				verifier.verify(decoded_token);
+
+				if (m_applicationsManager.setActive(application_id, active)) {
+					return crow::response(200, "Application active status updated successfully");
+				} else {
+					return crow::response(500, "Failed to update application active status");
+				}
+			} catch (const std::exception& e) {
+				return crow::response(401, "Invalid access token");
+			}
+			});
+	CROW_ROUTE(app, "api/application/rename")
+		.methods("POST"_method)
+		([this](const crow::request& req) {
+			auto json = crow::json::load(req.body);
+			if (!json) {
+				return crow::response(400, "Invalid JSON");
+			}
+			if (!json.has("application_id")) return crow::response(400, "Missing application_id");
+			if (!json.has("name")) return crow::response(400, "Missing new name");
+			if (!json.has("access_token")) return crow::response(400, "Missing access token");
+			std::string access_token = json["access_token"].s();
+			int application_id = json["application_id"].i();
+			std::string name = json["name"].s();
+			try {
+				auto decoded_token = jwt::decode<traits>(access_token);
+				auto verifier = jwt::verify<traits>()
+					.with_issuer("keystone")
+					.allow_algorithm(jwt::algorithm::hs256{ "secret" });
+				verifier.verify(decoded_token);
+
+				if (m_applicationsManager.renameApplication(application_id, name)) {
+					return crow::response(200, "Application renamed successfully");
+				} else {
+					return crow::response(500, "Failed to rename application");
+				}
+			} catch (const std::exception&e) {
+				return crow::response(401, "Invalid access token");
+			}
+			});
+	CROW_ROUTE(app, "api/applications/get_all")
+		.methods("POST"_method)
+		([this](const crow::request& req) {
+			auto json = crow::json::load(req.body);
+			if (!json) {
+				return crow::response(400, "Invalid JSON");
+			}
+			if (!json.has("access_token")) return crow::response(400, "Missing access token");
+			std::string access_token = json["access_token"].s();
+			try {
+				auto decoded_token = jwt::decode<traits>(access_token);
+				auto verifier = jwt::verify<traits>()
+					.with_issuer("keystone")
+					.allow_algorithm(jwt::algorithm::hs256{ "secret" });
+				verifier.verify(decoded_token);
+
+				int user_id = decoded_token.get_payload_claim("user_id").as_integer();
+				std::vector<ApplicationDetails> applications = m_applicationsManager.getApplications(user_id);
+
+				crow::json::wvalue response_json;
+				crow::json::wvalue::list applications_list;
+				for (const auto& app_details : applications) {
+					applications_list.emplace_back(crow::json::wvalue({
+						{"id", app_details.id},
+						{"user_id", app_details.user_id},
+						{"name", app_details.name},
+						{"active", app_details.active}
+					}));
+				}
+				response_json["applications"] = std::move(applications_list);
+				return crow::response(200, response_json);
+			} catch (const std::exception& e) {
+				return crow::response(401, "Invalid access token");
 			}
 			});
 

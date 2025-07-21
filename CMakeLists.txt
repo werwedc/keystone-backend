@@ -19,7 +19,9 @@ find_package(unofficial-sodium CONFIG REQUIRED)
 find_package(jwt-cpp CONFIG REQUIRED)
 
 # --- Create Executable ---
-add_executable(server src/main.cpp "src/database/DatabaseManager.cpp" "src/database/DatabaseManager.h" "src/core/Server.cpp" "src/core/Server.h"  "src/core/client/AccountManager.h" "src/core/client/AccountManager.cpp" "src/crow/CrowApp.cpp" "src/crow/CrowApp.h")
+add_executable(server src/main.cpp "src/database/DatabaseManager.cpp" "src/database/DatabaseManager.h" "src/core/Server.cpp" "src/core/Server.h"  "src/core/client/AccountManager.h" "src/core/client/AccountManager.cpp" "src/crow/CrowApp.cpp" "src/crow/CrowApp.h"
+        src/core/applications/ApplicationsManager.cpp
+        src/core/applications/ApplicationsManager.h)
 
 # --- Link Dependencies (Modern Method) ---
 # Link against the imported targets. This automatically handles

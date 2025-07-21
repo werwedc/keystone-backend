@@ -2,9 +2,11 @@
 
 #include <iostream>
 #include <vector>
-#include <cctype> 
+#include <cctype>
 #include <sodium.h>
 #include <pqxx/pqxx>
+
+#include "../../database/DatabaseManager.h"
 
 struct AccountDetails {
     int id;
@@ -14,7 +16,7 @@ struct AccountDetails {
 
 class AccountManager {
 public:
-    AccountManager(pqxx::connection& db_connection);
+    AccountManager(DatabaseManager& m_db_manager);
     
     bool createAccount(const std::string& email, const std::string& password);
     bool deleteAccount(int user_id);
@@ -29,7 +31,7 @@ public:
     bool deleteRefreshTokenHash(int user_id);
     std::string hash_token(const std::string& token);
 private:
-    pqxx::connection& m_db_connection;
+    DatabaseManager& m_db_manager;
     std::string hash_password(const std::string& password);
     std::vector<std::string> parsePgTextArray(const std::string& pg_array_string);
     std::string bytes_to_hex(const unsigned char* bytes, size_t len);

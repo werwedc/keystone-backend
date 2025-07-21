@@ -1,4 +1,3 @@
-#include <crow.h>
 #include "core/Server.h"
 
 int main()
