@@ -185,7 +185,7 @@ void CrowApp::initializeRoutes()
 					return crow::response(401, "Invalid access token");
 				}
 			});
-	CROW_ROUTE(app, "api/application/delete")
+	CROW_ROUTE(app, "/api/application/delete")
 		.methods("POST"_method)
 		([this](const crow::request& req) {
 			auto json = crow::json::load(req.body);
@@ -212,7 +212,7 @@ void CrowApp::initializeRoutes()
 				return crow::response(401, "Invalid access token");
 			}
 			});
-	CROW_ROUTE(app, "api/application/set_active")
+	CROW_ROUTE(app, "/api/application/set_active")
 		.methods("POST"_method)
 		([this](const crow::request& req) {
 			auto json = crow::json::load(req.body);
@@ -241,7 +241,7 @@ void CrowApp::initializeRoutes()
 				return crow::response(401, "Invalid access token");
 			}
 			});
-	CROW_ROUTE(app, "api/application/rename")
+	CROW_ROUTE(app, "/api/application/rename")
 		.methods("POST"_method)
 		([this](const crow::request& req) {
 			auto json = crow::json::load(req.body);
@@ -270,7 +270,7 @@ void CrowApp::initializeRoutes()
 				return crow::response(401, "Invalid access token");
 			}
 			});
-	CROW_ROUTE(app, "api/applications/get_all")
+	CROW_ROUTE(app, "/api/applications/get_all")
 		.methods("POST"_method)
 		([this](const crow::request& req) {
 			auto json = crow::json::load(req.body);

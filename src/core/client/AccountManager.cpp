@@ -22,10 +22,7 @@ bool AccountManager::createAccount(const std::string& email, const std::string& 
 			std::cout << "Successfully created account with ID: " << new_id << std::endl;
 			return true;
 		}
-		else {
-			return false;
-		}
-
+		return false;
 	}
 	catch (const std::exception& e) {
 		std::cerr << "Error while creating account: " << e.what() << std::endl;

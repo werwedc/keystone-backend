@@ -12,6 +12,7 @@ void Server::run() {
     }
     setupAccountManager();
     setupApplicationsManager();
+    setupLicenseManager();
     initializeLibSodium();
     runTests();
 	initializeRoutes();
@@ -38,6 +39,10 @@ void Server::setupApplicationsManager() {
     m_applicationsManager = std::make_unique<ApplicationsManager>(*m_accountManager, *m_dbManager);
 }
 
+void Server::setupLicenseManager() {
+    m_licenseManager = std::make_unique<LicenseManager>(*m_applicationsManager, *m_dbManager);
+}
+
 void Server::initializeLibSodium() {
     if (sodium_init() < 0) {
         std::cerr << "Error: Could not initialize libsodium!" << std::endl;
@@ -48,9 +53,10 @@ void Server::initializeLibSodium() {
 void Server::initializeRoutes() {
     m_crowApp = std::make_unique<CrowApp>(*m_accountManager, *m_applicationsManager);
     m_crowApp->initializeRoutes();
-	m_crowApp->run(8080); // Example port, can be configured
+	m_crowApp->run(8080);
 }
 void Server::runTests() {
-    m_accountManager->createAccount("test", "test");
-    m_applicationsManager->createApplication(1, "Demo Application");
+    m_licenseManager->createLicense(2," ley", 1);
+    m_licenseManager->addFlags(2, {"flag1", "flag2"});
+
 }
