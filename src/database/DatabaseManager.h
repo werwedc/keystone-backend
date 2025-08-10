@@ -4,7 +4,7 @@
 
 class DatabaseManager {
 public:
-	DatabaseManager(std::string& connection_string);
+	DatabaseManager(const std::string& connection_string);
 	bool connect();
 	pqxx::connection* getConnection();
 private:

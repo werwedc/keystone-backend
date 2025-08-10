@@ -55,13 +55,12 @@ bool ApplicationsManager::setActive(int application_id, bool active) {
     }
 }
 
-bool ApplicationsManager::setDuration(int application_id, std::chrono::seconds &duration) {
+bool ApplicationsManager::setDuration(int application_id, const std::chrono::seconds &duration) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
         std::string sql = "SELECT created_at from applications WHERE id = $1;";
 
         const pqxx::result result = tx.exec_params(sql, application_id);
-        tx.commit();
         if (!result.empty()) {
             std::string update_sql = R"(
                 UPDATE applications
@@ -74,6 +73,7 @@ bool ApplicationsManager::setDuration(int application_id, std::chrono::seconds &
             tx.commit();
             return true;
         }
+        return false;
     } catch (const std::exception& e) {
         std::cerr << "Error while setting duration of an application: " << e.what() << std::endl;
         return false;
@@ -100,6 +100,8 @@ bool ApplicationsManager::isExpired(int application_id) {
         return result[0][0].as<bool>();
     } catch (const std::exception& e) {
         std::cerr << "Error while checking if application is expired: " << e.what() << std::endl;
+        // On error, treat as expired (conservative)
+        return true;
     }
 }
 

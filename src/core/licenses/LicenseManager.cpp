@@ -30,14 +30,14 @@ bool LicenseManager::createLicense(int application_id, const std::string &licens
 bool LicenseManager::deleteLicense(int application_id) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
-        std::string sql = "DELETE FROM applications WHERE id = $1;";
+        std::string sql = "DELETE FROM licenses WHERE id = $1;";
 
         pqxx::result result = tx.exec_params(sql, application_id);
         tx.commit();
         return result.affected_rows() > 0;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error while deleting application: " << e.what() << std::endl;
+        std::cerr << "Error while deleting license: " << e.what() << std::endl;
         return false;
     }
 }
@@ -232,5 +232,8 @@ bool LicenseManager::isExpired(int license_id) {
         return result[0][0].as<bool>();
     } catch (const std::exception& e) {
         std::cerr << "Error while checking if license is expired: " << e.what() << std::endl;
+        // On error, treat as expired (conservative)
+        return true;
+
     }
 }

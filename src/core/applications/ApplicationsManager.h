@@ -16,7 +16,7 @@ public:
     bool createApplication(int user_id, const std::string& name);
     bool deleteApplication(int application_id);
     bool setActive(int application_id, bool active);
-    bool setDuration(int application_id, std::chrono::seconds& duration);
+    bool setDuration(int application_id, const std::chrono::seconds& duration);
     bool isExpired(int application_id);
     bool renameApplication(int application_id, std::string& name);
     std::vector<ApplicationDetails> getApplications(int user_id);
