@@ -73,7 +73,7 @@ bool AccountManager::isPasswordSecure(const std::string& password)
 	bool hasDigit = false;
 	for (char ch : password) {
 		if (isupper(ch)) hasUpper = true;
-		if (std::islower(ch)) hasLower = true; 
+		if (std::islower(ch)) hasLower = true;
 		if (isdigit(ch)) hasDigit = true;
 	}
 	if (!hasLower || !hasUpper || !hasDigit) return false;
@@ -133,7 +133,7 @@ std::optional<AccountDetails> AccountManager::getAccountDetails(const std::strin
 		pqxx::read_transaction tx(*m_db_manager.getConnection());
 		std::string sql = "SELECT id, email, roles FROM accounts WHERE LOWER(email) = LOWER($1);";
 		pqxx::result result = tx.exec_params(sql, email);
-		
+
 		if (!result.empty()) {
 			account_details.id = result[0][0].as<int>();
 			account_details.email = result[0][1].as<std::string>();
@@ -214,7 +214,7 @@ std::string AccountManager::hash_token(const std::string& token)
 		token.length()
 	);
 	std::string hex_hash = bytes_to_hex(hash, sizeof(hash));
-	
+
 	return hex_hash;
 }
 
@@ -238,7 +238,7 @@ std::string AccountManager::hash_password(const std::string& password)
 }
 
 std::vector<std::string> AccountManager::parsePgTextArray(const std::string& pg_array_string)
-{	
+{
 	std::vector<std::string> vec;
 	vec.clear();
 

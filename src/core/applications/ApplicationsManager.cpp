@@ -118,6 +118,30 @@ bool ApplicationsManager::renameApplication(int application_id, std::string& nam
     }
 }
 
+std::optional<ApplicationDetails> ApplicationsManager::getApplication(int application_id) {
+    try {
+        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        std::string sql = "SELECT account_id, name, active FROM applications WHERE id = $1;";
+        pqxx::result result = tx.exec_params(sql, application_id);
+
+        if (result.empty()) {
+            return std::nullopt;
+        }
+
+        ApplicationDetails application;
+        application.id = application_id;
+        application.user_id = result[0][0].as<int>();
+        application.name = result[0][1].as<std::string>();
+        application.active = result[0][2].as<bool>();
+
+        return application;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error while getting application: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
 std::vector<ApplicationDetails> ApplicationsManager::getApplications(int user_id) {
     std::vector<ApplicationDetails> applications;
     try {

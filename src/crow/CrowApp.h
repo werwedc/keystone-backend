@@ -37,4 +37,6 @@ private:
 	crow::App<CorsMiddleware> app;
 	AccountManager& m_accountManager;
     ApplicationsManager& m_applicationsManager;
+private:
+    std::optional<int> verifyAccessTokenAndGetUserID(const std::string& accessToken);
 };

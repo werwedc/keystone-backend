@@ -17,14 +17,14 @@ struct AccountDetails {
 class AccountManager {
 public:
     AccountManager(DatabaseManager& m_db_manager);
-    
+
     bool createAccount(const std::string& email, const std::string& password);
     bool deleteAccount(int user_id);
     bool doesAccountExist(const std::string& email);
     bool isPasswordSecure(const std::string& password);
     bool changePass(int user_id, const std::string& new_password);
     bool tryLogIn(const std::string& email, const std::string& password_attempt);
-    // JWT 
+    // JWT
     std::optional<AccountDetails> getAccountDetails(const std::string& email);
     bool storeRefreshTokenHash(int user_id, const std::string& refresh_token_hash);
     std::optional<std::string> getRefreshTokenHash(int user_id);
