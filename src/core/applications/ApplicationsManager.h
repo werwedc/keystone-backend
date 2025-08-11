@@ -22,7 +22,7 @@ public:
     bool isExpired(int application_id);
     bool renameApplication(int application_id, std::string& name);
     std::optional<ApplicationDetails> getApplication(int application_id);
-    std::vector<ApplicationDetails> getApplications(int user_id); // Need to use optionals here too
+    std::vector<ApplicationDetails> getApplications(int user_id);
 private:
     AccountManager& m_account_manager;
     DatabaseManager& m_db_manager;

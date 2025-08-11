@@ -6,6 +6,7 @@
 #include <jwt-cpp/jwt.h>
 #include "../core/client/AccountManager.h"
 #include "../core/applications/ApplicationsManager.h"
+#include "../core/licenses/LicenseManager.h"
 
 struct CorsMiddleware {
     struct context {};
@@ -30,13 +31,14 @@ struct CorsMiddleware {
 
 class CrowApp {
 public:
-	CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager);
+	CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager, LicenseManager& licenseManager);
 	void initializeRoutes();
 	void run(int port);
 private:
 	crow::App<CorsMiddleware> app;
 	AccountManager& m_accountManager;
     ApplicationsManager& m_applicationsManager;
+    LicenseManager& m_licenseManager;
 private:
     std::optional<int> verifyAccessTokenAndGetUserID(const std::string& accessToken);
 };

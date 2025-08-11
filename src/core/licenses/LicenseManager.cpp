@@ -27,7 +27,7 @@ bool LicenseManager::createLicense(int application_id, const std::string &licens
     }
 }
 
-bool LicenseManager::deleteLicense(int application_id) {
+bool LicenseManager::deleteLicense(int license_id) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
         std::string sql = "DELETE FROM licenses WHERE id = $1;";
@@ -43,44 +43,47 @@ bool LicenseManager::deleteLicense(int application_id) {
 }
 
 
-LicenseDetails LicenseManager::getLicense(int license_id) {
+std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
-        std::string sql = "SELECT id, application_id, license_key, flags, tier, max_allowed_machines, created_at, expires_at FROM licenses WHERE id = $1;";
+        std::string sql =
+            "SELECT id, application_id, license_key, flags, tier, max_allowed_machines, created_at, expires_at "
+            "FROM licenses WHERE id = $1;";
         pqxx::result result = tx.exec_params(sql, license_id);
         tx.commit();
 
-        if (!result.empty()) {
-            LicenseDetails license;
-            license.id = result[0][0].as<int>();
-            license.application_id = result[0][1].as<int>();
-            license.license_key = result[0][2].as<std::string>();
+        if (result.empty()) {
+            return std::nullopt; // License not found
+        }
 
-            // Handle flags (text[] to std::vector<std::string>)
-            if (!result[0][3].is_null()) {
-                std::string flags_str = result[0][3].as<std::string>();
-                // Remove curly braces and split by comma
-                if (flags_str.length() > 2) { // Check if not empty array {}
-                    flags_str = flags_str.substr(1, flags_str.length() - 2); // Remove {}
-                    std::stringstream ss(flags_str);
-                    std::string segment;
-                    while(std::getline(ss, segment, ',')) {
-                        license.flags.push_back(segment);
-                    }
+        LicenseDetails license;
+        license.id = result[0][0].as<int>();
+        license.application_id = result[0][1].as<int>();
+        license.license_key = result[0][2].as<std::string>();
+
+        // Handle flags (text[] to std::vector<std::string>)
+        if (!result[0][3].is_null()) {
+            std::string flags_str = result[0][3].as<std::string>();
+            if (flags_str.length() > 2) { // Not "{}"
+                flags_str = flags_str.substr(1, flags_str.length() - 2);
+                std::stringstream ss(flags_str);
+                std::string segment;
+                while (std::getline(ss, segment, ',')) {
+                    license.flags.push_back(segment);
                 }
             }
-
-            license.tier = result[0][4].as<int>();
-            license.max_allowed_machines = result[0][5].as<int>();
-            license.created_at = result[0][6].as<std::string>();
-            license.expires_at = result[0][7].as<std::string>();
-            return license;
         }
+
+        license.tier = result[0][4].as<int>();
+        license.max_allowed_machines = result[0][5].as<int>();
+        license.created_at = result[0][6].as<std::string>();
+        license.expires_at = result[0][7].as<std::string>();
+
+        return license;
     } catch (const std::exception& e) {
         std::cerr << "Error while getting license: " << e.what() << std::endl;
+        return std::nullopt;
     }
-    return LicenseDetails(); // Return an empty/default LicenseDetails if not found or error
-
 }
 
 std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
