@@ -1,4 +1,3 @@
-// --- MachinesManager.h (Complete Header) ---
 #pragma once
 
 #include <vector>

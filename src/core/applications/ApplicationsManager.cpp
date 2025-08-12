@@ -42,15 +42,15 @@ bool ApplicationsManager::deleteApplication(int application_id) {
     }
 }
 
-bool ApplicationsManager::setActive(int application_id, bool active) {
+bool ApplicationsManager::setStatus(int application_id, const std::string& status) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
-        std::string sql = "UPDATE applications SET active = $1 WHERE id = $2;";
-        pqxx::result result = tx.exec_params(sql, active, application_id);
+        std::string sql = "UPDATE applications SET status = $1 WHERE id = $2;";
+        pqxx::result result = tx.exec_params(sql, status, application_id);
         tx.commit();
         return result.affected_rows() > 0;
     }  catch (const std::exception& e) {
-        std::cerr << "Error while setting active: " << e.what() << std::endl;
+        std::cerr << "Error while setting status: " << e.what() << std::endl;
         return false;
     }
 }
@@ -121,7 +121,7 @@ bool ApplicationsManager::renameApplication(int application_id, const std::strin
 std::optional<ApplicationDetails> ApplicationsManager::getApplication(int application_id) {
     try {
         pqxx::read_transaction tx(*m_db_manager.getConnection());
-        std::string sql = "SELECT account_id, name, active FROM applications WHERE id = $1;";
+        std::string sql = "SELECT account_id, name, status FROM applications WHERE id = $1;";
         pqxx::result result = tx.exec_params(sql, application_id);
 
         if (result.empty()) {
@@ -132,7 +132,7 @@ std::optional<ApplicationDetails> ApplicationsManager::getApplication(int applic
         application.id = application_id;
         application.user_id = result[0][0].as<int>();
         application.name = result[0][1].as<std::string>();
-        application.active = result[0][2].as<bool>();
+        application.status = result[0][2].as<std::string>();
 
         return application;
     }
@@ -146,14 +146,14 @@ std::vector<ApplicationDetails> ApplicationsManager::getApplications(int user_id
     std::vector<ApplicationDetails> applications;
     try {
         pqxx::read_transaction tx(*m_db_manager.getConnection());
-        std::string sql = "SELECT id, name, active FROM applications WHERE account_id = $1;";
+        std::string sql = "SELECT id, name, status FROM applications WHERE account_id = $1;";
         pqxx::result result = tx.exec_params(sql, user_id);
         for (const pqxx::row& row : result) {
             ApplicationDetails application;
             application.id = row[0].as<int>();
             application.user_id = user_id;
             application.name = row[1].as<std::string>();
-            application.active = row[2].as<bool>();
+            application.status = row[2].as<std::string>();
             applications.push_back(application);
         }
     }
@@ -162,5 +162,3 @@ std::vector<ApplicationDetails> ApplicationsManager::getApplications(int user_id
     }
     return applications;
 }
-
-

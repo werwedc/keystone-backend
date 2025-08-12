@@ -229,32 +229,32 @@ void CrowApp::initializeRoutes()
             return crow::response(500, "Failed to delete application");
         });
 
-    CROW_ROUTE(app, "/api/applications/set_active")
-        .methods("POST"_method)
-        ([this](const crow::request& req) {
-            auto user_id = verifyAccessTokenAndGetUserID(req);
-            if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
+	CROW_ROUTE(app, "/api/applications/set_status")
+		.methods("POST"_method)
+		([this](const crow::request& req) {
+			auto user_id = verifyAccessTokenAndGetUserID(req);
+			if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
 
-            auto json = crow::json::load(req.body);
-            if (!json) return crow::response(400, "Invalid JSON");
-            if (!json.has("application_id")) return crow::response(400, "Missing application_id");
-            if (!json.has("active")) return crow::response(400, "Missing active status");
+			auto json = crow::json::load(req.body);
+			if (!json) return crow::response(400, "Invalid JSON");
+			if (!json.has("application_id")) return crow::response(400, "Missing application_id");
+			if (!json.has("status")) return crow::response(400, "Missing status field");
 
-            int application_id = json["application_id"].i();
-            bool active = json["active"].b();
+			int application_id = json["application_id"].i();
+			std::string status = json["status"].s();
 
-            auto appDetailsOpt = m_applicationsManager.getApplication(application_id);
-            if (!appDetailsOpt) return crow::response(404, "Application not found");
+			auto appDetailsOpt = m_applicationsManager.getApplication(application_id);
+			if (!appDetailsOpt) return crow::response(404, "Application not found");
 
-            if (appDetailsOpt->user_id != *user_id) {
-                return crow::response(403, "You do not own this application");
-            }
+			if (appDetailsOpt->user_id != *user_id) {
+				return crow::response(403, "You do not own this application");
+			}
 
-            if (m_applicationsManager.setActive(application_id, active)) {
-                return crow::response(200, "Application active status updated successfully");
-            }
-            return crow::response(500, "Failed to update application active status");
-        });
+			if (m_applicationsManager.setStatus(application_id, status)) {
+				return crow::response(200, "Application status updated successfully");
+			}
+			return crow::response(500, "Failed to update application status");
+		});
 
     CROW_ROUTE(app, "/api/applications/rename")
         .methods("POST"_method)
@@ -283,28 +283,26 @@ void CrowApp::initializeRoutes()
             return crow::response(500, "Failed to rename application");
         });
 
-    CROW_ROUTE(app, "/api/applications/get_all")
-        .methods("GET"_method) // Changed to GET as it's more appropriate for fetching data
-        ([this](const crow::request& req) {
-            auto user_id = verifyAccessTokenAndGetUserID(req);
-            if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
+	CROW_ROUTE(app, "/api/applications/get_all")
+		.methods("GET"_method)
+		([this](const crow::request& req) {
+			auto user_id = verifyAccessTokenAndGetUserID(req);
+			if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
 
-            std::vector<ApplicationDetails> applications = m_applicationsManager.getApplications(*user_id);
+			std::vector<ApplicationDetails> applications = m_applicationsManager.getApplications(*user_id);
 
-            crow::json::wvalue::list applications_list;
-            for (const auto& app_details : applications) {
-                applications_list.emplace_back(crow::json::wvalue({
-                    {"id", app_details.id},
-                    {"user_id", app_details.user_id},
-                    {"name", app_details.name},
-                    {"active", app_details.active}
-                }));
-            }
+			crow::json::wvalue::list applications_list;
+			for (const auto& app_details : applications) {
+				applications_list.emplace_back(crow::json::wvalue({
+					{"id", app_details.id},
+					{"user_id", app_details.user_id},
+					{"name", app_details.name},
+					{"status", app_details.status}
+				}));
+			}
 
-            return crow::response(200, crow::json::wvalue{{"applications", std::move(applications_list)}});
-        });
-
-    // --- REFACTORED LICENSE ROUTES ---
+			return crow::response(200, crow::json::wvalue{{"applications", std::move(applications_list)}});
+		});
 
     CROW_ROUTE(app, "/api/licenses/create")
         .methods("POST"_method)

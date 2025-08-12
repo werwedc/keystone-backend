@@ -9,7 +9,7 @@ struct ApplicationDetails {
     int id;
     int user_id;
     std::string name;
-    bool active;
+    std::string status;
 };
 
 class ApplicationsManager {
@@ -17,7 +17,7 @@ public:
     ApplicationsManager(AccountManager& account_manager, DatabaseManager& db_manager);
     bool createApplication(int user_id, const std::string& name);
     bool deleteApplication(int application_id);
-    bool setActive(int application_id, bool active);
+    bool setStatus(int application_id, const std::string& status);
     bool setDuration(int application_id, const std::chrono::seconds& duration);
     bool isExpired(int application_id);
     bool renameApplication(int application_id, const std::string& name);
