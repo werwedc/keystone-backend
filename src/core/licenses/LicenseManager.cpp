@@ -32,7 +32,7 @@ bool LicenseManager::deleteLicense(int license_id) {
         pqxx::work tx(*m_db_manager.getConnection());
         std::string sql = "DELETE FROM licenses WHERE id = $1;";
 
-        pqxx::result result = tx.exec_params(sql, application_id);
+        pqxx::result result = tx.exec_params(sql, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     }
@@ -47,7 +47,7 @@ std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
         std::string sql =
-            "SELECT id, application_id, license_key, flags, tier, max_allowed_machines, created_at, expires_at "
+            "SELECT id, application_id, license_key, flags, tier, number_of_machines, max_allowed_machines, created_at, expires_at "
             "FROM licenses WHERE id = $1;";
         pqxx::result result = tx.exec_params(sql, license_id);
         tx.commit();
@@ -75,9 +75,10 @@ std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
         }
 
         license.tier = result[0][4].as<int>();
-        license.max_allowed_machines = result[0][5].as<int>();
-        license.created_at = result[0][6].as<std::string>();
-        license.expires_at = result[0][7].as<std::string>();
+        license.number_of_machines = result[0][5].as<int>();
+        license.max_allowed_machines = result[0][6].as<int>();
+        license.created_at = result[0][7].as<std::string>();
+        license.expires_at = result[0][8].as<std::string>();
 
         return license;
     } catch (const std::exception& e) {
@@ -90,7 +91,7 @@ std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
     std::vector<LicenseDetails> licenses;
     try {
         pqxx::work tx(*m_db_manager.getConnection());
-        std::string sql = "SELECT id, application_id, license_key, flags, tier, max_allowed_machines, created_at, expires_at FROM licenses WHERE application_id = $1;";
+        std::string sql = "SELECT id, application_id, license_key, flags, tier, number_of_machines, max_allowed_machines, created_at, expires_at FROM licenses WHERE application_id = $1;";
         pqxx::result result = tx.exec_params(sql, application_id);
         tx.commit();
 
@@ -115,9 +116,10 @@ std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
             }
 
             license.tier = row[4].as<int>();
-            license.max_allowed_machines = row[5].as<int>();
-            license.created_at = row[6].as<std::string>();
-            license.expires_at = row[7].as<std::string>();
+            license.number_of_machines = row[5].as<int>();
+            license.max_allowed_machines = row[6].as<int>();
+            license.created_at = row[7].as<std::string>();
+            license.expires_at = row[8].as<std::string>();
             licenses.push_back(license);
         }
     } catch (const std::exception& e) {
@@ -186,6 +188,32 @@ bool LicenseManager::setMaxAllowedMachines(int license_id, int max_allowed_machi
         return result.affected_rows() > 0;
     }  catch (const std::exception& e) {
         std::cerr << "Error while setting max allowed machines: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool LicenseManager::setNumberMachines(int license_id, int number_of_machines) {
+    try {
+        pqxx::work tx(*m_db_manager.getConnection());
+        std::string sql = "UPDATE licenses SET number_of_machines = $1 WHERE id = $2;";
+        pqxx::result result = tx.exec_params(sql, number_of_machines, license_id);
+        tx.commit();
+        return result.affected_rows() > 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error while setting number_of_machines: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool LicenseManager::addNumberMachines(int license_id, int number_of_machines) {
+    try {
+        pqxx::work tx(*m_db_manager.getConnection());
+        std::string sql = "UPDATE licenses SET number_of_machines = number_of_machines + $1 WHERE id = $2;";
+        pqxx::result result = tx.exec_params(sql, number_of_machines, license_id);
+        tx.commit();
+        return result.affected_rows() > 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error while adding to number_of_machines: " << e.what() << std::endl;
         return false;
     }
 }

@@ -40,5 +40,5 @@ private:
     ApplicationsManager& m_applicationsManager;
     LicenseManager& m_licenseManager;
 private:
-    std::optional<int> verifyAccessTokenAndGetUserID(const std::string& accessToken);
+    std::optional<int> verifyAccessTokenAndGetUserID(const crow::request& req);
 };

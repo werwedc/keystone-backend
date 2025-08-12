@@ -105,7 +105,7 @@ bool ApplicationsManager::isExpired(int application_id) {
     }
 }
 
-bool ApplicationsManager::renameApplication(int application_id, std::string& name) {
+bool ApplicationsManager::renameApplication(int application_id, const std::string& name) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
         std::string sql = "UPDATE applications SET name = $1 WHERE id = $2;";

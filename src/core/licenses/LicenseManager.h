@@ -12,6 +12,7 @@ struct LicenseDetails {
     std::vector<std::string> flags;
     int tier;
     int max_allowed_machines;
+    int number_of_machines;
     std::string created_at;
     std::string expires_at;
 };
@@ -27,6 +28,8 @@ public:
     bool setFlags(int license_id, const std::vector<std::string>& flags);
     bool setTier(int license_id, int tier);
     bool setMaxAllowedMachines(int license_id, int max_allowed_machines);
+    bool setNumberMachines(int license_id, int number_of_machines);
+    bool addNumberMachines(int license_id, int number_of_machines);
     bool setDuration(int license_id, const std::chrono::seconds& duration);
     bool isExpired(int license_id);
 private:
