@@ -1,10 +1,17 @@
 #include "ApplicationsManager.h"
+#include <iostream>
+#include <pqxx/pqxx>
 
-//Constructor
 ApplicationsManager::ApplicationsManager(AccountManager& account_manager, DatabaseManager& db_manager)
     : m_account_manager(account_manager), m_db_manager(db_manager) {
 }
-//TODO: expires at
+
+/**
+ * @brief Creates a new application associated with a user account.
+ * @param user_id The ID of the account that owns this application.
+ * @param name The name of the new application.
+ * @return True if the application was created successfully, false otherwise.
+ */
 bool ApplicationsManager::createApplication(int user_id, const std::string& name) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
@@ -27,6 +34,11 @@ bool ApplicationsManager::createApplication(int user_id, const std::string& name
     }
 }
 
+/**
+ * @brief Deletes an application from the database.
+ * @param application_id The ID of the application to delete.
+ * @return True if the deletion was successful, false otherwise.
+ */
 bool ApplicationsManager::deleteApplication(int application_id) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
@@ -42,6 +54,12 @@ bool ApplicationsManager::deleteApplication(int application_id) {
     }
 }
 
+/**
+ * @brief Updates the status for a specific application.
+ * @param application_id The ID of the application to modify.
+ * @param status The new status string (e.g., "active", "paused").
+ * @return True on successful update, false otherwise.
+ */
 bool ApplicationsManager::setStatus(int application_id, const std::string& status) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
@@ -55,56 +73,63 @@ bool ApplicationsManager::setStatus(int application_id, const std::string& statu
     }
 }
 
+/**
+ * @brief Sets the expiration date of an application based on a duration from its creation date.
+ * @param application_id The ID of the application to modify.
+ * @param duration The duration (in seconds) from the creation time at which the application should expire.
+ * @return True on successful update, false otherwise.
+ */
 bool ApplicationsManager::setDuration(int application_id, const std::chrono::seconds &duration) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
-        std::string sql = "SELECT created_at from applications WHERE id = $1;";
+        std::string update_sql = R"(
+            UPDATE applications
+            SET expires_at = created_at + ($1 * INTERVAL '1 second')
+            WHERE id = $2;
+        )";
 
-        const pqxx::result result = tx.exec_params(sql, application_id);
-        if (!result.empty()) {
-            std::string update_sql = R"(
-                UPDATE applications
-                SET expires_at = created_at + ($1 * INTERVAL '1 second')
-                WHERE id = $2;
-            )";
-
-            tx.exec_params(update_sql, duration.count(), application_id);
-
-            tx.commit();
-            return true;
-        }
-        return false;
+        tx.exec_params(update_sql, duration.count(), application_id);
+        tx.commit();
+        return true;
     } catch (const std::exception& e) {
         std::cerr << "Error while setting duration of an application: " << e.what() << std::endl;
         return false;
     }
 }
 
+/**
+ * @brief Checks if an application is currently expired.
+ * @param application_id The ID of the application to check.
+ * @return True if the application's `expires_at` date is in the past, false otherwise. Returns true on error.
+ */
 bool ApplicationsManager::isExpired(int application_id) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
-
+        pqxx::read_transaction tx(*m_db_manager.getConnection());
         std::string sql = R"(
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM applications
-                    WHERE id = $1 AND expires_at < NOW()
-                );
-            )";
+            SELECT EXISTS (
+                SELECT 1
+                FROM applications
+                WHERE id = $1 AND expires_at < NOW()
+            );
+        )";
         pqxx::result result = tx.exec_params(sql, application_id);
 
-        tx.commit();
         if (result.empty()) {
             return true;
         }
         return result[0][0].as<bool>();
     } catch (const std::exception& e) {
         std::cerr << "Error while checking if application is expired: " << e.what() << std::endl;
-        // On error, treat as expired (conservative)
         return true;
     }
 }
 
+/**
+ * @brief Renames an application.
+ * @param application_id The ID of the application to rename.
+ * @param name The new name for the application.
+ * @return True on successful update, false otherwise.
+ */
 bool ApplicationsManager::renameApplication(int application_id, const std::string& name) {
     try {
         pqxx::work tx(*m_db_manager.getConnection());
@@ -115,9 +140,15 @@ bool ApplicationsManager::renameApplication(int application_id, const std::strin
     }
     catch (const std::exception& e) {
         std::cerr << "Error while renaming application: " << e.what() << std::endl;
+        return false;
     }
 }
 
+/**
+ * @brief Retrieves the details of a single application by its ID.
+ * @param application_id The ID of the application to fetch.
+ * @return An std::optional containing the ApplicationDetails struct if found, otherwise std::nullopt.
+ */
 std::optional<ApplicationDetails> ApplicationsManager::getApplication(int application_id) {
     try {
         pqxx::read_transaction tx(*m_db_manager.getConnection());
@@ -142,6 +173,11 @@ std::optional<ApplicationDetails> ApplicationsManager::getApplication(int applic
     }
 }
 
+/**
+ * @brief Retrieves all applications associated with a specific user account.
+ * @param user_id The ID of the user whose applications are to be fetched.
+ * @return A vector of ApplicationDetails structs. The vector will be empty if no applications are found or an error occurs.
+ */
 std::vector<ApplicationDetails> ApplicationsManager::getApplications(int user_id) {
     std::vector<ApplicationDetails> applications;
     try {

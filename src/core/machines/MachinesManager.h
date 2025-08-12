@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 #include <optional>
-#include <pqxx/pqxx>
 #include "../../database/DatabaseManager.h"
 #include "../licenses/LicenseManager.h"
 
@@ -26,6 +25,8 @@ public:
     bool isMachineLimitReached(int license_id);
     std::optional<MachineDetails> getMachineByHwid(const std::string& hwid);
     std::vector<MachineDetails> getMachinesForLicense(int license_id);
+
+    bool validateAndActivateMachine(int license_id, const std::string& hwid, const std::string& ip);
 private:
     DatabaseManager& m_db_manager;
     LicenseManager& m_license_manager;

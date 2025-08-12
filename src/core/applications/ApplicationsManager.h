@@ -2,7 +2,6 @@
 
 #include <optional>
 #include <vector>
-#include <pqxx/pqxx>
 #include "../client/AccountManager.h"
 
 struct ApplicationDetails {

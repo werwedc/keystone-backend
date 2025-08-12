@@ -1,10 +1,8 @@
 #pragma once
 
-#include <iostream>
+#include <string>
 #include <vector>
-#include <cctype>
-#include <sodium.h>
-#include <pqxx/pqxx>
+#include <optional>
 
 #include "../../database/DatabaseManager.h"
 

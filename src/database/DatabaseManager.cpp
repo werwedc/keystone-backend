@@ -1,7 +1,7 @@
 #include "DatabaseManager.h"
 #include <iostream>
 
-DatabaseManager::DatabaseManager(std::string& connection_string) {
+DatabaseManager::DatabaseManager(const std::string& connection_string) {
 	m_connection_string = connection_string;
 }
 
