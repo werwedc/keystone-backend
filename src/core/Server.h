@@ -2,10 +2,10 @@
 #include "../database/DatabaseManager.h"
 #include "client/AccountManager.h"
 #include "applications/ApplicationsManager.h"
-#include "../crow/CrowApp.h"
-#include <iostream>
-
 #include "licenses/LicenseManager.h"
+#include "machines/MachinesManager.h"
+#include "../crow/CrowApp.h"
+#include <string>
 
 class Server {
 public:
@@ -17,6 +17,7 @@ private:
 	void setupAccountManager();
 	void setupApplicationsManager();
 	void setupLicenseManager();
+	void setupMachinesManager();
 	void initializeLibSodium();
 	void initializeRoutes();
 	void runTests();
@@ -24,5 +25,6 @@ private:
 	std::unique_ptr<AccountManager> m_accountManager;
 	std::unique_ptr<ApplicationsManager> m_applicationsManager;
 	std::unique_ptr<LicenseManager> m_licenseManager;
+	std::unique_ptr<MachinesManager> m_machinesManager;
 	std::unique_ptr<CrowApp> m_crowApp;
 };

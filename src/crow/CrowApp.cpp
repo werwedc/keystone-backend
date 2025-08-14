@@ -2,8 +2,8 @@
 
 using traits = jwt::traits::kazuho_picojson;
 
-CrowApp::CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager, LicenseManager& licenseManager)
-	:m_accountManager(accountManager), m_applicationsManager(applicationsManager), m_licenseManager(licenseManager)
+CrowApp::CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager, LicenseManager& licenseManager, MachinesManager& machines_manager)
+	:m_accountManager(accountManager), m_applicationsManager(applicationsManager), m_licenseManager(licenseManager), m_machinesManager(machines_manager)
 {
 }
 
@@ -385,7 +385,11 @@ void CrowApp::initializeRoutes()
             resp["tier"] = licenseDetails.tier;
             resp["max_allowed_machines"] = licenseDetails.max_allowed_machines;
             resp["created_at"] = licenseDetails.created_at;
-            resp["expires_at"] = licenseDetails.expires_at;
+        	if (licenseDetails.expires_at.has_value()) {
+				resp["expires_at"] = licenseDetails.expires_at.value();
+			} else {
+				resp["expires_at"] = nullptr;
+			}
 
             crow::json::wvalue::list flags_list;
             for (const auto& flag : licenseDetails.flags) {
@@ -416,6 +420,7 @@ void CrowApp::initializeRoutes()
             auto licenses = m_licenseManager.getLicenses(application_id);
 
             crow::json::wvalue::list licenses_list;
+        	std::cout<< application_id << " " << licenses.size() << std::endl;
             for (const auto& license : licenses) {
                 crow::json::wvalue license_json;
                 license_json["id"] = license.id;
@@ -424,8 +429,11 @@ void CrowApp::initializeRoutes()
                 license_json["tier"] = license.tier;
                 license_json["max_allowed_machines"] = license.max_allowed_machines;
                 license_json["created_at"] = license.created_at;
-                license_json["expires_at"] = license.expires_at;
-
+            	if (license.expires_at.has_value()) {
+					license_json["expires_at"] = license.expires_at.value();
+				} else {
+					license_json["expires_at"] = nullptr;
+				}
                 crow::json::wvalue::list flags_list;
                 for (const auto& flag : license.flags) {
                     flags_list.emplace_back(flag);
@@ -581,6 +589,121 @@ void CrowApp::initializeRoutes()
             bool expired = m_licenseManager.isExpired(license_id);
             return crow::response(200, crow::json::wvalue({{"expired", expired}}));
        });
+	CROW_ROUTE(app, "/api/machines/activate")
+        .methods("POST"_method)
+        ([this](const crow::request& req) {
+            auto json = crow::json::load(req.body);
+            if (!json) return crow::response(400, "Invalid JSON");
+            if (!json.has("license_key") || !json.has("hwid")) {
+                return crow::response(400, "Missing required fields: license_key and/or hwid");
+            }
+
+            std::string license_key = json["license_key"].s();
+            std::string hwid = json["hwid"].s();
+            std::string ip = req.remote_ip_address;
+
+            // Find the license by its key.
+            auto licenseOpt = m_licenseManager.getLicenseByKey(license_key);
+            if (!licenseOpt) {
+                return crow::response(403, "Invalid license key");
+            }
+
+            // Check if the license itself is expired or the parent application is inactive.
+            if (m_licenseManager.isExpired(licenseOpt->id)) {
+                return crow::response(403, "License has expired");
+            }
+            auto appOpt = m_applicationsManager.getApplication(licenseOpt->application_id);
+            if (!appOpt || appOpt->status != "active") {
+                 return crow::response(403, "Application is not active");
+            }
+
+            // Attempt to validate and activate the machine.
+            if (m_machinesManager.validateAndActivateMachine(licenseOpt->id, hwid, ip)) {
+                // On success, return some useful license details to the client app.
+                crow::json::wvalue resp;
+                resp["status"] = "success";
+                resp["tier"] = licenseOpt->tier;
+
+                crow::json::wvalue::list flags_list;
+                for (const auto& flag : licenseOpt->flags) {
+                    flags_list.emplace_back(flag);
+                }
+                resp["flags"] = std::move(flags_list);
+                return crow::response(200, resp);
+            } else {
+                return crow::response(403, "Machine activation failed. It may be registered to another license or the machine limit has been reached.");
+            }
+        });
+
+    /**
+     * @brief Admin-Facing: Gets all machines for a specific license.
+     * Authenticated via JWT Bearer token.
+     */
+    CROW_ROUTE(app, "/api/machines/get_for_license")
+        .methods("POST"_method)
+        ([this](const crow::request& req) {
+            auto user_id = verifyAccessTokenAndGetUserID(req);
+            if (!user_id) return crow::response(401, "Unauthorized");
+
+            auto json = crow::json::load(req.body);
+            if (!json || !json.has("license_id")) return crow::response(400, "Missing license_id");
+
+            int license_id = json["license_id"].i();
+
+            // Ownership check
+            auto licenseOpt = m_licenseManager.getLicense(license_id);
+            if (!licenseOpt) return crow::response(404, "License not found");
+            auto appOpt = m_applicationsManager.getApplication(licenseOpt->application_id);
+            if (!appOpt || appOpt->user_id != *user_id) {
+                return crow::response(403, "Permission denied");
+            }
+
+            // Get the machines
+            auto machines = m_machinesManager.getMachinesForLicense(license_id);
+            crow::json::wvalue::list machine_list;
+            for (const auto& machine : machines) {
+                machine_list.emplace_back(crow::json::wvalue({
+                    {"id", machine.id},
+                    {"hwid", machine.hwid},
+                    {"created_at", machine.created_at}
+                    // We don't need to send the full IP list here for a summary view
+                }));
+            }
+            return crow::response(200, crow::json::wvalue({{"machines", std::move(machine_list)}}));
+        });
+
+    /**
+     * @brief Admin-Facing: Deletes/deactivates a machine.
+     * Authenticated via JWT Bearer token.
+     */
+    CROW_ROUTE(app, "/api/machines/delete")
+        .methods("POST"_method)
+        ([this](const crow::request& req) {
+            auto user_id = verifyAccessTokenAndGetUserID(req);
+            if (!user_id) return crow::response(401, "Unauthorized");
+
+            auto json = crow::json::load(req.body);
+            if (!json || !json.has("hwid")) return crow::response(400, "Missing hwid");
+
+            std::string hwid = json["hwid"].s();
+
+            // Ownership check
+            auto machineOpt = m_machinesManager.getMachineByHwid(hwid);
+            if (!machineOpt) return crow::response(404, "Machine not found");
+            auto licenseOpt = m_licenseManager.getLicense(machineOpt->license_id);
+            if (!licenseOpt) return crow::response(404, "Associated license not found");
+            auto appOpt = m_applicationsManager.getApplication(licenseOpt->application_id);
+            if (!appOpt || appOpt->user_id != *user_id) {
+                return crow::response(403, "Permission denied");
+            }
+
+            // Delete the machine
+            if (m_machinesManager.deleteMachine(hwid)) {
+                return crow::response(200, "Machine deleted successfully");
+            } else {
+                return crow::response(500, "Failed to delete machine");
+            }
+        });
 
 }
 

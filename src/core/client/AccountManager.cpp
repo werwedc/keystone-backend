@@ -147,14 +147,16 @@ bool AccountManager::tryLogIn(const std::string& email, const std::string& passw
     std::string stored_hash;
     std::string fake_hash = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$R+IM63_d5t41p1_a25DRRgn92XD3ZvoKx2fC2hddMAo";
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
-        std::string sql = "SELECT password_hash FROM accounts WHERE LOWER(email) = LOWER($1);";
-        pqxx::result result = tx.exec_params(sql, email);
+        {
+            pqxx::read_transaction tx(*m_db_manager.getConnection());
+            std::string sql = "SELECT password_hash FROM accounts WHERE LOWER(email) = LOWER($1);";
+            pqxx::result result = tx.exec_params(sql, email);
 
-        if (!result.empty()) {
-            stored_hash = result[0][0].as<std::string>();
-        } else {
-            stored_hash = fake_hash;
+            if (!result.empty()) {
+                stored_hash = result[0][0].as<std::string>();
+            } else {
+                stored_hash = fake_hash;
+            }
         }
     }
     catch (const std::exception& e) {

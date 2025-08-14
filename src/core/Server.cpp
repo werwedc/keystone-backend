@@ -13,6 +13,7 @@ void Server::run() {
     setupAccountManager();
     setupApplicationsManager();
     setupLicenseManager();
+    setupMachinesManager();
     initializeLibSodium();
     runTests();
 	initializeRoutes();
@@ -43,20 +44,41 @@ void Server::setupLicenseManager() {
     m_licenseManager = std::make_unique<LicenseManager>(*m_applicationsManager, *m_dbManager);
 }
 
+void Server::setupMachinesManager() {
+    m_machinesManager = std::make_unique<MachinesManager>(*m_dbManager, *m_licenseManager);
+}
+
+
 void Server::initializeLibSodium() {
     if (sodium_init() < 0) {
         std::cerr << "Error: Could not initialize libsodium!" << std::endl;
     }
-    return;
 }
+
+// In Server::initializeRoutes()
 
 void Server::initializeRoutes() {
-    m_crowApp = std::make_unique<CrowApp>(*m_accountManager, *m_applicationsManager, *m_licenseManager);
-    m_crowApp->initializeRoutes();
-	m_crowApp->run(8080);
-}
-void Server::runTests() {
-    m_licenseManager->createLicense(2," ley", 1);
-    m_licenseManager->addFlags(2, {"flag1", "flag2"});
+    m_crowApp = std::make_unique<CrowApp>(*m_accountManager, *m_applicationsManager, *m_licenseManager, *m_machinesManager);
 
+    auto& app = m_crowApp->get_app();
+
+    // Get a handle to the CORS middleware
+    auto& cors = app.get_middleware<crow::CORSHandler>();
+
+    // Configure the rules
+    cors.global()
+        .origin("http://localhost:5173")
+        .methods("POST"_method, "GET"_method, "DELETE"_method, "PUT"_method)
+        .headers("Content-Type", "Authorization");
+
+    // Continue with your original logic
+    m_crowApp->initializeRoutes();
+    m_crowApp->run(8080);
+}
+
+void Server::runTests() {
+    //m_accountManager->createAccount("werwedc@gmail.com", "Werwedc!!1111");
+    //m_applicationsManager->createApplication(6, "Minecraft");
+    //m_applicationsManager->createApplication(6, "Gay dating app for women");
+    //m_licenseManager->createLicense(5, "235wibtu", 1);
 }

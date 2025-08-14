@@ -94,11 +94,39 @@ std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
         license.number_of_machines = row["number_of_machines"].as<int>();
         license.max_allowed_machines = row["max_allowed_machines"].as<int>();
         license.created_at = row["created_at"].as<std::string>();
-        license.expires_at = row["expires_at"].as<std::string>();
+        if (!result[0][8].is_null()) {
+            license.expires_at = result[0][8].as<std::string>();
+        }
 
         return license;
     } catch (const std::exception& e) {
         std::cerr << "Error while getting license: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+
+/**
+ * @brief Retrieves the details of a single license by its unique key.
+ * @param license_key The license key to fetch.
+ * @return An std::optional containing the LicenseDetails struct if found, otherwise std::nullopt.
+ */
+std::optional<LicenseDetails> LicenseManager::getLicenseByKey(const std::string& license_key) {
+    try {
+        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        std::string sql =
+            "SELECT id, application_id, license_key, flags, tier, number_of_machines, max_allowed_machines, created_at, expires_at "
+            "FROM licenses WHERE license_key = $1;";
+        pqxx::result result = tx.exec_params(sql, license_key);
+
+        if (result.empty()) {
+            return std::nullopt;
+        }
+
+        // Since we have getLicense(id), we can just reuse it to avoid duplicating the parsing logic.
+        return getLicense(result[0]["id"].as<int>());
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error while getting license by key: " << e.what() << std::endl;
         return std::nullopt;
     }
 }
@@ -137,7 +165,9 @@ std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
             license.number_of_machines = row["number_of_machines"].as<int>();
             license.max_allowed_machines = row["max_allowed_machines"].as<int>();
             license.created_at = row["created_at"].as<std::string>();
-            license.expires_at = row["expires_at"].as<std::string>();
+            if (!row["expires_at"].is_null()) {
+                license.expires_at = row["expires_at"].as<std::string>();
+            }
             licenses.push_back(license);
         }
     } catch (const std::exception& e) {
