@@ -18,13 +18,24 @@ MachinesManager::MachinesManager(DatabaseManager& db_manager, LicenseManager& li
  * @return True if the machine was created successfully, false otherwise.
  */
 bool MachinesManager::createMachine(int license_id, const std::string& hwid, const std::string& ip) {
-    if (isMachineLimitReached(license_id)) {
-        std::cerr << "Machine limit has been reached for license ID: " << license_id << std::endl;
-        return false;
-    }
-
     try {
         pqxx::work tx(*m_db_manager.getConnection());
+
+        std::string lock_sql = "SELECT number_of_machines, max_allowed_machines FROM licenses WHERE id = $1 FOR UPDATE;";
+        pqxx::result limit_res = tx.exec_params(lock_sql, license_id);
+
+        if (limit_res.empty()) {
+            std::cerr << "Error: License with ID " << license_id << " not found." << std::endl;
+            return false;
+        }
+
+        int number_of_machines = limit_res[0][0].as<int>();
+        int max_allowed_machines = limit_res[0][1].as<int>();
+
+        if (number_of_machines >= max_allowed_machines) {
+            std::cerr << "Machine limit has been reached for license ID: " << license_id << std::endl;
+            return false;
+        }
 
         std::string check_sql = "SELECT EXISTS(SELECT 1 FROM machines WHERE license_id = $1 AND hwid = $2);";
         pqxx::result check_res = tx.exec_params(check_sql, license_id, hwid);
@@ -43,7 +54,7 @@ bool MachinesManager::createMachine(int license_id, const std::string& hwid, con
         std::cout << "Successfully created machine for license ID: " << license_id << std::endl;
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error in createMachine transaction: " << e.what() << std::endl;
+        std::cerr << "Error in createMachine transaction: " << e.what() << std.endl;
         return false;
     }
 }
