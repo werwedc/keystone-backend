@@ -2,7 +2,7 @@
 #include <iostream>
 #include "sodium.h"
 
-Server::Server() {
+Server::Server(Config config) : m_config(std::move(config)) {
 
 }
 
@@ -20,7 +20,7 @@ void Server::run() {
 }
 
 bool Server::setupDatabase() {
-    m_dbManager = std::make_unique<DatabaseManager>(database_conn_string);
+    m_dbManager = std::make_unique<DatabaseManager>(m_config.db_conn_string);
 
     if (m_dbManager->connect()) {
         std::cout << "Succesfully connected to the database\n";
