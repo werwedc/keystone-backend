@@ -37,7 +37,7 @@ struct CorsMiddleware {
 
 class CrowApp {
 public:
-	CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager, LicenseManager& licenseManager, MachinesManager& machines_manager);
+	CrowApp(AccountManager& accountManager, ApplicationsManager& applicationsManager, LicenseManager& licenseManager, MachinesManager& machines_manager, const std::string& jwt_secret);
 	void initializeRoutes();
 	void run(int port);
     crow::App<crow::CORSHandler>& get_app() {
@@ -49,6 +49,7 @@ private:
     ApplicationsManager& m_applicationsManager;
     LicenseManager& m_licenseManager;
     MachinesManager& m_machinesManager;
+    std::string m_jwt_secret;
 private:
     std::optional<int> verifyAccessTokenAndGetUserID(const crow::request& req);
 };
