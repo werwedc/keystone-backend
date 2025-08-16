@@ -1,6 +1,6 @@
 #include "ApplicationsManager.h"
-#include <iostream>
 #include <pqxx/pqxx>
+#include <iostream>
 
 ApplicationsManager::ApplicationsManager(AccountManager& account_manager, DatabaseManager& db_manager)
     : m_account_manager(account_manager), m_db_manager(db_manager) {
@@ -14,7 +14,8 @@ ApplicationsManager::ApplicationsManager(AccountManager& account_manager, Databa
  */
 bool ApplicationsManager::createApplication(int user_id, const std::string& name) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "INSERT INTO applications (account_id, name) "
             "VALUES ($1, $2) RETURNING id;";
 
@@ -41,7 +42,8 @@ bool ApplicationsManager::createApplication(int user_id, const std::string& name
  */
 bool ApplicationsManager::deleteApplication(int application_id) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "DELETE FROM applications WHERE id = $1;";
 
         pqxx::result result = tx.exec_params(sql, application_id);
@@ -62,7 +64,8 @@ bool ApplicationsManager::deleteApplication(int application_id) {
  */
 bool ApplicationsManager::setStatus(int application_id, const std::string& status) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE applications SET status = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, status, application_id);
         tx.commit();
@@ -81,7 +84,8 @@ bool ApplicationsManager::setStatus(int application_id, const std::string& statu
  */
 bool ApplicationsManager::setDuration(int application_id, const std::chrono::seconds &duration) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string update_sql = R"(
             UPDATE applications
             SET expires_at = created_at + ($1 * INTERVAL '1 second')
@@ -104,7 +108,8 @@ bool ApplicationsManager::setDuration(int application_id, const std::chrono::sec
  */
 bool ApplicationsManager::isExpired(int application_id) {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = R"(
             SELECT EXISTS (
                 SELECT 1
@@ -132,7 +137,8 @@ bool ApplicationsManager::isExpired(int application_id) {
  */
 bool ApplicationsManager::renameApplication(int application_id, const std::string& name) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE applications SET name = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, name, application_id);
         tx.commit();
@@ -151,7 +157,8 @@ bool ApplicationsManager::renameApplication(int application_id, const std::strin
  */
 std::optional<ApplicationDetails> ApplicationsManager::getApplication(int application_id) {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT account_id, name, status FROM applications WHERE id = $1;";
         pqxx::result result = tx.exec_params(sql, application_id);
 
@@ -181,7 +188,8 @@ std::optional<ApplicationDetails> ApplicationsManager::getApplication(int applic
 std::vector<ApplicationDetails> ApplicationsManager::getApplications(int user_id) {
     std::vector<ApplicationDetails> applications;
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT id, name, status FROM applications WHERE account_id = $1;";
         pqxx::result result = tx.exec_params(sql, user_id);
         for (const pqxx::row& row : result) {

@@ -1,29 +1,10 @@
 #include "DatabaseManager.h"
-#include <iostream>
 
-DatabaseManager::DatabaseManager(const std::string& connection_string) {
-	m_connection_string = connection_string;
+DatabaseManager::DatabaseManager(std::string connection_string, size_t pool_size)
+    : m_connection_string(std::move(connection_string)) {
+    m_pool = std::make_unique<ConnectionPool>(pool_size, m_connection_string);
 }
 
-bool DatabaseManager::connect() {
-	try { 
-		m_connection = std::make_unique<pqxx::connection>(m_connection_string); 
-		if (m_connection->is_open()) {
-			std::cout << "Succesfully connected\n";
-			return true;
-		}
-		else {
-			std::cerr << "Connection object created but connection not opened\n";
-			return false;
-		}
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Database connection exception: " << e.what() << "\n";
-		return false;
-	}
+PooledConnection DatabaseManager::getConnection() {
+    return m_pool->getConnection();
 }
-
-pqxx::connection* DatabaseManager::getConnection() {
-	return m_connection.get();
-}
-	

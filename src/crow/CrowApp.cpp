@@ -364,17 +364,11 @@ void CrowApp::initializeRoutes()
             return crow::response(500, "Failed to delete license");
         });
 
-    CROW_ROUTE(app, "/api/licenses/get")
-        .methods("POST"_method) // Can be POST if body is needed, or GET with query params
-        ([this](const crow::request& req) {
+    CROW_ROUTE(app, "/api/licenses/<int>")
+        .methods("GET"_method)
+        ([this](const crow::request& req, int license_id) {
             auto user_id = verifyAccessTokenAndGetUserID(req);
             if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
-
-            auto json = crow::json::load(req.body);
-            if (!json) return crow::response(400, "Invalid JSON");
-            if (!json.has("license_id")) return crow::response(400, "Missing license_id");
-
-            int license_id = json["license_id"].i();
 
             auto licenseOpt = m_licenseManager.getLicense(license_id);
             if (!licenseOpt) return crow::response(404, "License not found");
@@ -407,17 +401,11 @@ void CrowApp::initializeRoutes()
             return crow::response(200, resp);
         });
 
-    CROW_ROUTE(app, "/api/licenses/get_all")
-        .methods("POST"_method) // Can be POST if body is needed, or GET with query params
-        ([this](const crow::request& req) {
+    CROW_ROUTE(app, "/api/applications/<int>/licenses")
+        .methods("GET"_method)
+        ([this](const crow::request& req, int application_id) {
             auto user_id = verifyAccessTokenAndGetUserID(req);
             if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
-
-            auto json = crow::json::load(req.body);
-            if (!json) return crow::response(400, "Invalid JSON");
-            if (!json.has("application_id")) return crow::response(400, "Missing application_id");
-
-            int application_id = json["application_id"].i();
 
             auto appDetailsOpt = m_applicationsManager.getApplication(application_id);
             if (!appDetailsOpt || appDetailsOpt->user_id != *user_id) {
@@ -427,7 +415,6 @@ void CrowApp::initializeRoutes()
             auto licenses = m_licenseManager.getLicenses(application_id);
 
             crow::json::wvalue::list licenses_list;
-        	std::cout<< application_id << " " << licenses.size() << std::endl;
             for (const auto& license : licenses) {
                 crow::json::wvalue license_json;
                 license_json["id"] = license.id;
@@ -571,19 +558,11 @@ void CrowApp::initializeRoutes()
             return crow::response(500, "Failed to update license duration");
        });
 
-    CROW_ROUTE(app, "/api/licenses/is_expired")
-       .methods("POST"_method)
-       ([this](const crow::request& req) {
+    CROW_ROUTE(app, "/api/licenses/<int>/is_expired")
+       .methods("GET"_method)
+       ([this](const crow::request& req, int license_id) {
             auto user_id = verifyAccessTokenAndGetUserID(req);
             if (!user_id) return crow::response(401, "Unauthorized: Invalid or missing Bearer token");
-
-            auto json = crow::json::load(req.body);
-            if (!json) return crow::response(400, "Invalid JSON");
-            if (!json.has("license_id")) {
-                return crow::response(400, "Missing required fields");
-            }
-
-            int license_id = json["license_id"].i();
 
             auto licenseOpt = m_licenseManager.getLicense(license_id);
             if (!licenseOpt) return crow::response(404, "License not found");
@@ -646,16 +625,11 @@ void CrowApp::initializeRoutes()
      * @brief Admin-Facing: Gets all machines for a specific license.
      * Authenticated via JWT Bearer token.
      */
-    CROW_ROUTE(app, "/api/machines/get_for_license")
-        .methods("POST"_method)
-        ([this](const crow::request& req) {
+    CROW_ROUTE(app, "/api/licenses/<int>/machines")
+        .methods("GET"_method)
+        ([this](const crow::request& req, int license_id) {
             auto user_id = verifyAccessTokenAndGetUserID(req);
             if (!user_id) return crow::response(401, "Unauthorized");
-
-            auto json = crow::json::load(req.body);
-            if (!json || !json.has("license_id")) return crow::response(400, "Missing license_id");
-
-            int license_id = json["license_id"].i();
 
             // Ownership check
             auto licenseOpt = m_licenseManager.getLicense(license_id);

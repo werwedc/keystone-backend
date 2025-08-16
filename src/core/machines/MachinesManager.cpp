@@ -1,7 +1,7 @@
 #include "MachinesManager.h"
+#include <pqxx/pqxx>
 #include <iostream>
 #include <sstream>
-#include <pqxx/pqxx>
 
 MachinesManager::MachinesManager(DatabaseManager& db_manager, LicenseManager& license_manager)
     : m_db_manager(db_manager), m_license_manager(license_manager) {
@@ -19,13 +19,13 @@ MachinesManager::MachinesManager(DatabaseManager& db_manager, LicenseManager& li
  */
 bool MachinesManager::createMachine(int license_id, const std::string& hwid, const std::string& ip) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
 
         std::string lock_sql = "SELECT number_of_machines, max_allowed_machines FROM licenses WHERE id = $1 FOR UPDATE;";
         pqxx::result limit_res = tx.exec_params(lock_sql, license_id);
 
         if (limit_res.empty()) {
-            std::cerr << "Error: License with ID " << license_id << " not found." << std::endl;
             return false;
         }
 
@@ -33,14 +33,12 @@ bool MachinesManager::createMachine(int license_id, const std::string& hwid, con
         int max_allowed_machines = limit_res[0][1].as<int>();
 
         if (number_of_machines >= max_allowed_machines) {
-            std::cerr << "Machine limit has been reached for license ID: " << license_id << std::endl;
             return false;
         }
 
         std::string check_sql = "SELECT EXISTS(SELECT 1 FROM machines WHERE license_id = $1 AND hwid = $2);";
         pqxx::result check_res = tx.exec_params(check_sql, license_id, hwid);
         if (check_res[0][0].as<bool>()) {
-            std::cerr << "Error: Machine with this HWID already exists for this license." << std::endl;
             return false;
         }
 
@@ -51,10 +49,8 @@ bool MachinesManager::createMachine(int license_id, const std::string& hwid, con
         tx.exec_params(update_sql, license_id);
 
         tx.commit();
-        std::cout << "Successfully created machine for license ID: " << license_id << std::endl;
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error in createMachine transaction: " << e.what() << std.endl;
         return false;
     }
 }
@@ -68,13 +64,13 @@ bool MachinesManager::createMachine(int license_id, const std::string& hwid, con
  */
 bool MachinesManager::deleteMachine(const std::string& hwid) {
      try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
 
         std::string select_sql = "SELECT license_id FROM machines WHERE hwid = $1;";
         pqxx::result select_res = tx.exec_params(select_sql, hwid);
 
         if (select_res.empty()) {
-            std::cerr << "Cannot delete machine: HWID not found." << std::endl;
             return false;
         }
         int license_id = select_res[0][0].as<int>();
@@ -92,7 +88,6 @@ bool MachinesManager::deleteMachine(const std::string& hwid) {
         tx.commit();
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error in deleteMachine transaction: " << e.what() << std::endl;
         return false;
     }
 }
@@ -105,13 +100,13 @@ bool MachinesManager::deleteMachine(const std::string& hwid) {
  */
 bool MachinesManager::updateMachineIP(const std::string& hwid, const std::string& new_ip) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE machines SET ips = array_append(ips, $1) WHERE hwid = $2;";
         pqxx::result result = tx.exec_params(sql, new_ip, hwid);
         tx.commit();
         return result.affected_rows() > 0;
     } catch (const std::exception& e) {
-        std::cerr << "Error while updating machine IP: " << e.what() << std::endl;
         return false;
     }
 }
@@ -136,7 +131,8 @@ bool MachinesManager::isMachineLimitReached(int license_id) {
  */
 std::optional<MachineDetails> MachinesManager::getMachineByHwid(const std::string& hwid) {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT id, license_id, ips, hwid, created_at, expires_at FROM machines WHERE hwid = $1;";
         pqxx::result result = tx.exec_params(sql, hwid);
 
@@ -158,16 +154,19 @@ std::optional<MachineDetails> MachinesManager::getMachineByHwid(const std::strin
         if (!row["ips"].is_null()) {
              std::string ip_array_str = row["ips"].as<std::string>();
              ip_array_str = ip_array_str.substr(1, ip_array_str.length() - 2); // Remove {}
-             std::stringstream ss(ip_array_str);
              std::string segment;
-             while(std::getline(ss, segment, ',')) {
-                machine.IPs.push_back(segment);
+             size_t start = 0;
+             size_t end = ip_array_str.find(',');
+             while (end != std::string::npos) {
+                machine.IPs.push_back(ip_array_str.substr(start, end - start));
+                start = end + 1;
+                end = ip_array_str.find(',', start);
              }
+             machine.IPs.push_back(ip_array_str.substr(start, end));
         }
 
         return machine;
     } catch (const std::exception& e) {
-        std::cerr << "Error while getting machine by HWID: " << e.what() << std::endl;
         return std::nullopt;
     }
 }
@@ -180,7 +179,8 @@ std::optional<MachineDetails> MachinesManager::getMachineByHwid(const std::strin
 std::vector<MachineDetails> MachinesManager::getMachinesForLicense(int license_id) {
     std::vector<MachineDetails> machines;
      try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT id, license_id, ips, hwid, created_at, expires_at FROM machines WHERE license_id = $1;";
         pqxx::result result = tx.exec_params(sql, license_id);
 
@@ -198,16 +198,19 @@ std::vector<MachineDetails> MachinesManager::getMachinesForLicense(int license_i
             if (!row["ips"].is_null()) {
                  std::string ip_array_str = row["ips"].as<std::string>();
                  ip_array_str = ip_array_str.substr(1, ip_array_str.length() - 2);
-                 std::stringstream ss(ip_array_str);
                  std::string segment;
-                 while(std::getline(ss, segment, ',')) {
-                    machine.IPs.push_back(segment);
+                 size_t start = 0;
+                 size_t end = ip_array_str.find(',');
+                 while (end != std::string::npos) {
+                    machine.IPs.push_back(ip_array_str.substr(start, end - start));
+                    start = end + 1;
+                    end = ip_array_str.find(',', start);
                  }
+                 machine.IPs.push_back(ip_array_str.substr(start, end));
             }
             machines.push_back(machine);
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error while getting machines for license: " << e.what() << std::endl;
     }
     return machines;
 }

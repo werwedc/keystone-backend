@@ -1,6 +1,4 @@
 #include "LicenseManager.h"
-#include <iostream>
-#include <sstream>
 
 LicenseManager::LicenseManager(ApplicationsManager &applications_manager, DatabaseManager &db_manager)
     : m_applications_manager(applications_manager), m_db_manager(db_manager) {
@@ -15,7 +13,8 @@ LicenseManager::LicenseManager(ApplicationsManager &applications_manager, Databa
  */
 bool LicenseManager::createLicense(int application_id, const std::string &license_key, int tier) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "INSERT INTO licenses (application_id, license_key, tier) "
             "VALUES ($1, $2, $3) RETURNING id;";
 
@@ -24,13 +23,11 @@ bool LicenseManager::createLicense(int application_id, const std::string &licens
 
         if (!result.empty()) {
             const int new_id = result[0][0].as<int>();
-            std::cout << "Successfully created license with ID: " << new_id << std::endl;
             return true;
         }
         return false;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error while creating license: " << e.what() << std::endl;
         return false;
     }
 }
@@ -42,7 +39,8 @@ bool LicenseManager::createLicense(int application_id, const std::string &licens
  */
 bool LicenseManager::deleteLicense(int license_id) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "DELETE FROM licenses WHERE id = $1;";
 
         pqxx::result result = tx.exec_params(sql, license_id);
@@ -50,7 +48,6 @@ bool LicenseManager::deleteLicense(int license_id) {
         return result.affected_rows() > 0;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error while deleting license: " << e.what() << std::endl;
         return false;
     }
 }
@@ -62,7 +59,8 @@ bool LicenseManager::deleteLicense(int license_id) {
  */
 std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql =
             "SELECT id, application_id, license_key, flags, tier, number_of_machines, max_allowed_machines, created_at, expires_at "
             "FROM licenses WHERE id = $1;";
@@ -82,11 +80,15 @@ std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
             std::string flags_str = row["flags"].as<std::string>();
             if (flags_str.length() > 2) { // Not "{}"
                 flags_str = flags_str.substr(1, flags_str.length() - 2);
-                std::stringstream ss(flags_str);
                 std::string segment;
-                while (std::getline(ss, segment, ',')) {
-                    license.flags.push_back(segment);
+                size_t start = 0;
+                size_t end = flags_str.find(',');
+                while (end != std::string::npos) {
+                    license.flags.push_back(flags_str.substr(start, end - start));
+                    start = end + 1;
+                    end = flags_str.find(',', start);
                 }
+                license.flags.push_back(flags_str.substr(start, end));
             }
         }
 
@@ -100,7 +102,6 @@ std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
 
         return license;
     } catch (const std::exception& e) {
-        std::cerr << "Error while getting license: " << e.what() << std::endl;
         return std::nullopt;
     }
 }
@@ -112,7 +113,8 @@ std::optional<LicenseDetails> LicenseManager::getLicense(int license_id) {
  */
 std::optional<LicenseDetails> LicenseManager::getLicenseByKey(const std::string& license_key) {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql =
             "SELECT id, application_id, license_key, flags, tier, number_of_machines, max_allowed_machines, created_at, expires_at "
             "FROM licenses WHERE license_key = $1;";
@@ -126,7 +128,6 @@ std::optional<LicenseDetails> LicenseManager::getLicenseByKey(const std::string&
         return getLicense(result[0]["id"].as<int>());
 
     } catch (const std::exception& e) {
-        std::cerr << "Error while getting license by key: " << e.what() << std::endl;
         return std::nullopt;
     }
 }
@@ -139,7 +140,8 @@ std::optional<LicenseDetails> LicenseManager::getLicenseByKey(const std::string&
 std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
     std::vector<LicenseDetails> licenses;
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT id, application_id, license_key, flags, tier, number_of_machines, max_allowed_machines, created_at, expires_at FROM licenses WHERE application_id = $1;";
         pqxx::result result = tx.exec_params(sql, application_id);
 
@@ -153,11 +155,15 @@ std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
                 std::string flags_str = row["flags"].as<std::string>();
                 if (flags_str.length() > 2) {
                     flags_str = flags_str.substr(1, flags_str.length() - 2);
-                    std::stringstream ss(flags_str);
                     std::string segment;
-                    while(std::getline(ss, segment, ',')) {
-                        license.flags.push_back(segment);
+                    size_t start = 0;
+                    size_t end = flags_str.find(',');
+                    while (end != std::string::npos) {
+                        license.flags.push_back(flags_str.substr(start, end - start));
+                        start = end + 1;
+                        end = flags_str.find(',', start);
                     }
+                    license.flags.push_back(flags_str.substr(start, end));
                 }
             }
 
@@ -171,7 +177,6 @@ std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
             licenses.push_back(license);
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error while getting licenses for application: " << e.what() << std::endl;
     }
     return licenses;
 }
@@ -184,13 +189,13 @@ std::vector<LicenseDetails> LicenseManager::getLicenses(int application_id) {
  */
 bool LicenseManager::addFlags(int license_id, const std::vector<std::string> &flags) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE licenses SET flags = array_cat(flags, $1) WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, flags, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     } catch (const std::exception& e) {
-        std::cerr << "Error while adding flags: " << e.what() << std::endl;
         return false;
     }
 }
@@ -203,13 +208,13 @@ bool LicenseManager::addFlags(int license_id, const std::vector<std::string> &fl
  */
 bool LicenseManager::setFlags(int license_id, const std::vector<std::string> &flags) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE licenses SET flags = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, flags, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     } catch (const std::exception& e) {
-        std::cerr << "Error while setting flags: " << e.what() << std::endl;
         return false;
     }
 }
@@ -222,13 +227,13 @@ bool LicenseManager::setFlags(int license_id, const std::vector<std::string> &fl
  */
 bool LicenseManager::setTier(int license_id, int tier) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE licenses SET tier = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, tier, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     }  catch (const std::exception& e) {
-        std::cerr << "Error while setting tier: " << e.what() << std::endl;
         return false;
     }
 }
@@ -241,13 +246,13 @@ bool LicenseManager::setTier(int license_id, int tier) {
  */
 bool LicenseManager::setMaxAllowedMachines(int license_id, int max_allowed_machines) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE licenses SET max_allowed_machines = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, max_allowed_machines, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     }  catch (const std::exception& e) {
-        std::cerr << "Error while setting max allowed machines: " << e.what() << std::endl;
         return false;
     }
 }
@@ -260,13 +265,13 @@ bool LicenseManager::setMaxAllowedMachines(int license_id, int max_allowed_machi
  */
 bool LicenseManager::setNumberMachines(int license_id, int number_of_machines) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE licenses SET number_of_machines = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, number_of_machines, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     } catch (const std::exception& e) {
-        std::cerr << "Error while setting number_of_machines: " << e.what() << std::endl;
         return false;
     }
 }
@@ -279,13 +284,13 @@ bool LicenseManager::setNumberMachines(int license_id, int number_of_machines) {
  */
 bool LicenseManager::addNumberMachines(int license_id, int number_to_add) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE licenses SET number_of_machines = number_of_machines + $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, number_to_add, license_id);
         tx.commit();
         return result.affected_rows() > 0;
     } catch (const std::exception& e) {
-        std::cerr << "Error while adding to number_of_machines: " << e.what() << std::endl;
         return false;
     }
 }
@@ -298,7 +303,8 @@ bool LicenseManager::addNumberMachines(int license_id, int number_to_add) {
  */
 bool LicenseManager::setDuration(int license_id, const std::chrono::seconds &duration) {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string update_sql = R"(
             UPDATE licenses
             SET expires_at = created_at + ($1 * INTERVAL '1 second')
@@ -309,7 +315,6 @@ bool LicenseManager::setDuration(int license_id, const std::chrono::seconds &dur
         tx.commit();
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error while setting duration of a license: " << e.what() << std::endl;
         return false;
     }
 }
@@ -321,7 +326,8 @@ bool LicenseManager::setDuration(int license_id, const std::chrono::seconds &dur
  */
 bool LicenseManager::isExpired(int license_id) {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = R"(
             SELECT EXISTS (
                 SELECT 1
@@ -336,7 +342,6 @@ bool LicenseManager::isExpired(int license_id) {
         }
         return result[0][0].as<bool>();
     } catch (const std::exception& e) {
-        std::cerr << "Error while checking if license is expired: " << e.what() << std::endl;
         return true;
     }
 }

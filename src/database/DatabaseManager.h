@@ -1,13 +1,16 @@
 #pragma once
-#include <pqxx/pqxx>
-#include <iostream>
+
+#include "ConnectionPool.h"
+#include <string>
+#include <memory>
 
 class DatabaseManager {
 public:
-	DatabaseManager(const std::string& connection_string);
-	bool connect();
-	pqxx::connection* getConnection();
+    DatabaseManager(std::string connection_string, size_t pool_size = 10);
+    
+    PooledConnection getConnection();
+
 private:
-	std::string m_connection_string;
-	std::unique_ptr<pqxx::connection> m_connection;
+    std::string m_connection_string;
+    std::unique_ptr<ConnectionPool> m_pool;
 };

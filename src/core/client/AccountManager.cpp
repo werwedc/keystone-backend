@@ -1,11 +1,11 @@
 #include "AccountManager.h"
-#include <iostream>
 #include <vector>
 #include <cctype>
 #include <sodium.h>
 #include <pqxx/pqxx>
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 
 AccountManager::AccountManager(DatabaseManager& db_manager)
     : m_db_manager(db_manager)
@@ -25,7 +25,8 @@ bool AccountManager::createAccount(const std::string& email, const std::string& 
     try {
         std::string password_hash = hash_password(password);
 
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "INSERT INTO accounts (email, password_hash, roles) "
             "VALUES ($1, $2, ARRAY['user']) RETURNING id;";
 
@@ -53,7 +54,8 @@ bool AccountManager::createAccount(const std::string& email, const std::string& 
 bool AccountManager::deleteAccount(int id)
 {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "DELETE FROM accounts WHERE id = $1;";
 
         pqxx::result result = tx.exec_params(sql, id);
@@ -75,7 +77,8 @@ bool AccountManager::deleteAccount(int id)
 bool AccountManager::doesAccountExist(const std::string& email)
 {
     try {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT EXISTS(SELECT 1 FROM accounts WHERE LOWER(email) = LOWER($1));";
         pqxx::result result = tx.exec_params(sql, email);
         if (!result.empty()) {
@@ -122,7 +125,8 @@ bool AccountManager::isPasswordSecure(const std::string& password)
 bool AccountManager::changePass(int id, const std::string& new_password){
     try {
         std::string new_hash = hash_password(new_password);
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE accounts SET password_hash = $1 WHERE id = $2;";
         pqxx::result result = tx.exec_params(sql, new_hash, id);
         tx.commit();
@@ -148,7 +152,8 @@ bool AccountManager::tryLogIn(const std::string& email, const std::string& passw
     std::string fake_hash = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$R+IM63_d5t41p1_a25DRRgn92XD3ZvoKx2fC2hddMAo";
     try {
         {
-            pqxx::read_transaction tx(*m_db_manager.getConnection());
+            auto conn = m_db_manager.getConnection();
+            pqxx::read_transaction tx(*conn);
             std::string sql = "SELECT password_hash FROM accounts WHERE LOWER(email) = LOWER($1);";
             pqxx::result result = tx.exec_params(sql, email);
 
@@ -183,7 +188,8 @@ std::optional<AccountDetails> AccountManager::getAccountDetails(const std::strin
     AccountDetails account_details{};
     try
     {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT id, email, roles FROM accounts WHERE LOWER(email) = LOWER($1);";
         pqxx::result result = tx.exec_params(sql, email);
 
@@ -210,7 +216,8 @@ std::optional<AccountDetails> AccountManager::getAccountDetails(const std::strin
 bool AccountManager::storeRefreshTokenHash(int user_id, const std::string& refresh_token_hash)
 {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE accounts "
             "SET refresh_token_hash = $1 "
             "WHERE id = $2;";
@@ -235,7 +242,8 @@ std::optional<std::string> AccountManager::getRefreshTokenHash(int user_id)
 {
     try
     {
-        pqxx::read_transaction tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::read_transaction tx(*conn);
         std::string sql = "SELECT refresh_token_hash FROM accounts WHERE id = $1;";
         pqxx::result result = tx.exec_params(sql, user_id);
 
@@ -258,7 +266,8 @@ std::optional<std::string> AccountManager::getRefreshTokenHash(int user_id)
 bool AccountManager::deleteRefreshTokenHash(int user_id)
 {
     try {
-        pqxx::work tx(*m_db_manager.getConnection());
+        auto conn = m_db_manager.getConnection();
+        pqxx::work tx(*conn);
         std::string sql = "UPDATE accounts "
             "SET refresh_token_hash = NULL "
             "WHERE id = $1;";
